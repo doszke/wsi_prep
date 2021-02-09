@@ -4,6 +4,10 @@ import cv2
 from matplotlib import pyplot as plt
 import numpy as np
 import math
+from tqdm import tqdm
+import pandas as pd
+import os
+from tifffile import tifffile as tff
 
 
 def edge_detection(img):
@@ -165,9 +169,61 @@ def treshold(img):
     return mask
 
 
-if __name__ == '__main__':
-    #img = io.MultiImage('samples/1.png')
-    img = cv2.imread('samples/1.png')
-    print(img.data)
-    rotate(img)
+sz = 120
+N = 20
+patients = 5
 
+
+def tile(img, mask):
+    # from https://www.kaggle.com/ayeshasaqib/final-project
+    result = []
+    shape = img.shape
+    pad0,pad1 = (sz - shape[0]%sz)%sz, (sz - shape[1]%sz)%sz
+    img = np.pad(img,[[pad0//2,pad0-pad0//2],[pad1//2,pad1-pad1//2],[0,0]],
+                constant_values=255)
+    mask = np.pad(mask,[[pad0//2,pad0-pad0//2],[pad1//2,pad1-pad1//2],[0,0]],
+                constant_values=0)
+    img = img.reshape(img.shape[0]//sz,sz,img.shape[1]//sz,sz,3)
+    img = img.transpose(0,2,1,3,4).reshape(-1,sz,sz,3)
+    mask = mask.reshape(mask.shape[0]//sz,sz,mask.shape[1]//sz,sz,3)
+    mask = mask.transpose(0,2,1,3,4).reshape(-1,sz,sz,3)
+    if len(img) < N:
+        mask = np.pad(mask,[[0,N-len(img)],[0,0],[0,0],[0,0]],constant_values=0)
+        img = np.pad(img,[[0,N-len(img)],[0,0],[0,0],[0,0]],constant_values=255)
+    idxs = np.argsort(img.reshape(img.shape[0],-1).sum(-1))[:N]
+    img = img[idxs]
+    mask = mask[idxs]
+    return img, mask
+
+
+from img_cutter import Cutter
+
+if __name__ == '__main__':
+
+    TRAIN = 'G:/panda/d/train_images/'
+    MASKS = 'G:/panda/d/train_label_masks/'
+    TRAIN_OUT = 'G:/panda/d/my_train_images/'
+    MASKS_OUT = 'G:/panda/d/my_train_labels/'
+
+    img_ids = os.listdir(TRAIN)
+    mask_ids = os.listdir(MASKS)
+
+    assert len(img_ids) == len(mask_ids)
+
+    cutter = Cutter()
+    # 2209
+    checkpoint = 7137
+    for x in range(checkpoint, len(img_ids)):
+        print(f'{x}/{len(img_ids)-1}')
+        img_id = img_ids[x]
+        print(img_id)
+        mask_id = mask_ids[x]
+        img = io.MultiImage(os.path.join(TRAIN, img_id))
+        mask = io.MultiImage(os.path.join(MASKS, mask_id))
+        img = img[1]
+        mask = mask[1][:, :, 0]
+        xs, xe, ys, ye = cutter.get_patch_location(img)
+        nimg = img[ys:ye, xs:xe]
+        nmask = mask[ys:ye, xs:xe]
+        cv2.imwrite(os.path.join(TRAIN_OUT, img_id), cv2.cvtColor(nimg, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(os.path.join(MASKS_OUT, mask_id), cv2.cvtColor(nmask, cv2.COLOR_RGB2BGR))
