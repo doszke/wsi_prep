@@ -8,7 +8,14 @@ from tqdm import tqdm
 import pandas as pd
 import os
 from tifffile import tifffile as tff
+import imutils
+from staintools.reinhard_normalization import ReinhardColorNormalizer
 
+sharp = np.array([[0, -1, 0],
+                   [-1, 5,-1],
+                   [0, -1, 0]])
+
+reinhard = ReinhardColorNormalizer()
 
 def edge_detection(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -148,7 +155,10 @@ def rotate(img, iter=10):
             fig = plt.figure()
             plt.subplot(211)
             plt.imshow(fragment)
-            rotated = rotate_fragment(fragment, alpha)
+            fragment = cv2.resize(fragment, None, fx=2, fy=2, interpolation=cv2.INTER_LANCZOS4)
+            rotated = imutils.rotate(fragment, alpha)
+            rotated = cv2.resize(rotated, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_LANCZOS4)
+
             plt.subplot(212)
             plt.imshow(rotated)
             plt.show()
@@ -212,18 +222,72 @@ if __name__ == '__main__':
 
     cutter = Cutter()
     # 2209
-    checkpoint = 7137
-    for x in range(checkpoint, len(img_ids)):
-        print(f'{x}/{len(img_ids)-1}')
-        img_id = img_ids[x]
-        print(img_id)
-        mask_id = mask_ids[x]
-        img = io.MultiImage(os.path.join(TRAIN, img_id))
-        mask = io.MultiImage(os.path.join(MASKS, mask_id))
-        img = img[1]
-        mask = mask[1][:, :, 0]
-        xs, xe, ys, ye = cutter.get_patch_location(img)
-        nimg = img[ys:ye, xs:xe]
-        nmask = mask[ys:ye, xs:xe]
-        cv2.imwrite(os.path.join(TRAIN_OUT, img_id), cv2.cvtColor(nimg, cv2.COLOR_RGB2BGR))
-        cv2.imwrite(os.path.join(MASKS_OUT, mask_id), cv2.cvtColor(nmask, cv2.COLOR_RGB2BGR))
+    # checkpoint = 7137
+    # for x in range(checkpoint, len(img_ids)):
+    #     print(f'{x}/{len(img_ids)-1}')
+    #     img_id = img_ids[x]
+    #     print(img_id)
+    #     mask_id = mask_ids[x]
+    #     img = io.MultiImage(os.path.join(TRAIN, img_id))
+    #     mask = io.MultiImage(os.path.join(MASKS, mask_id))
+    #     img = img[1]
+    #     mask = mask[1][:, :, 0]
+    #     xs, xe, ys, ye = cutter.get_patch_location(img)
+    #     nimg = img[ys:ye, xs:xe]
+    #     nmask = mask[ys:ye, xs:xe]
+    #     cv2.imwrite(os.path.join(TRAIN_OUT, img_id), cv2.cvtColor(nimg, cv2.COLOR_RGB2BGR))
+    #     cv2.imwrite(os.path.join(MASKS_OUT, mask_id), cv2.cvtColor(nmask, cv2.COLOR_RGB2BGR))
+
+    import cv2
+    import numpy as np
+
+    #img = cv2.imread(f"samples/1.png")
+    #rotate(img)
+
+    for x in range(1, 7):
+        img = cv2.imread(f'voronoi_test/{x}.png', 0)
+        _, img = cv2.threshold(img, 230, 255, cv2.THRESH_BINARY)
+        img = cv2.bitwise_not(img)
+        kernel = np.ones((5, 5), np.uint8)
+
+        img = cv2.erode(img, kernel, iterations=1)
+        img = cv2.erode(img, kernel, iterations=1)
+        img = cv2.erode(img, kernel, iterations=1)
+        img = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
+
+        img = cv2.dilate(img, kernel, iterations=1)
+        img = cv2.dilate(img, kernel, iterations=1)
+        img = cv2.dilate(img, kernel, iterations=1)
+        img = cv2.dilate(img, kernel, iterations=1)
+        img = cv2.dilate(img, kernel, iterations=1)
+        img = cv2.dilate(img, kernel, iterations=1)
+        img = cv2.dilate(img, kernel, iterations=1)
+        img = cv2.dilate(img, kernel, iterations=1)
+        img = cv2.dilate(img, kernel, iterations=1)
+
+        size = np.size(img)
+        skel = np.zeros(img.shape, np.uint8)
+
+        ret, img = cv2.threshold(img, 127, 255, 0)
+        plt.imshow(img)
+        plt.show()
+        element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
+        done = False
+
+        while (not done):
+            eroded = cv2.erode(img, element)
+            temp = cv2.dilate(eroded, element)
+            temp = cv2.subtract(img, temp)
+            skel = cv2.bitwise_or(skel, temp)
+            img = eroded.copy()
+
+            zeros = size - cv2.countNonZero(img)
+            if zeros == size:
+                done = True
+
+        cv2.imshow("skel", skel)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        cv2.imwrite(f"voronoi_output/{x}.png", skel)
+
+
