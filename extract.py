@@ -1,4 +1,5 @@
-import cv2
+import os
+from skimage import io
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -200,15 +201,14 @@ def cut(img, mask, x, y, tile_width):
         prev_w = w
         coordlist.append((prev_h, prev_w))
         mimg = img[h:(h + cstep), w:(w + cstep), :]
-        cv2.imwrite(f"cut_test/{indx}.png", mimg)
         #plt.imshow(mimg)
         #plt.show()
-        print(f"cut_test/{indx}.png")
+        # print(f"cut_test/{indx}.png")
         indx += 1
         val_idxs = new_find_value(mimg, last)
         keyarr = []
         valarr = []
-        print(val_idxs.keys())
+        # print(val_idxs.keys())
         for key in val_idxs.keys():
             bonds = val_idxs[key]
             diff = bonds[1] - bonds[0]
@@ -233,11 +233,11 @@ def cut(img, mask, x, y, tile_width):
             direction = keyarr[idx]
         else:
             direction = priviledged_dir[0]
-        print(direction)
+        # print(direction)
 
         last = set_last(direction)
         h, w = new_calculate_new_points(h, w, height, width, cstep*3, val_idxs[direction], direction)
-        print(h, w, prev_h, prev_w)
+        # print(h, w, prev_h, prev_w)
         if abs(prev_h - h) < cstep * 0.1 and abs(prev_w - w) < cstep * 0.1:
             cutting = False
 
@@ -273,7 +273,7 @@ def find_minimal(marr):
         if marr[i] < smallest:
             smallest = marr[i]
             idx = i
-    print(smallest)
+    # print(smallest)
     return idx, smallest
 
 
@@ -288,7 +288,7 @@ def find_minimal_dict(mdict):
     return smkey
 
 
-def cut_image_from_working_tile(myimg, last):
+def cut_image_from_working_tile(myimg, mymask, last):
     """
 
     :param mimg:
@@ -304,7 +304,7 @@ def cut_image_from_working_tile(myimg, last):
         for i in range(nsteps):
             slice = myimg[(2*tsize):(3*tsize), (i*step):(i*step + tsize), :]
             res_arr.append(analyze_slice(slice))
-        print(res_arr)
+        # print(res_arr)
         arr_idx, smallest = find_minimal(res_arr)
         res_dict[DOWN] = smallest
         slice = myimg[tsize:(2*tsize), 0:tsize, :]
@@ -312,15 +312,15 @@ def cut_image_from_working_tile(myimg, last):
         slice = myimg[tsize:(2 * tsize), (2*tsize):(3*tsize), :]
         res_dict[RIGHT] = analyze_slice(slice)
         drctn = find_minimal_dict(res_dict)
-        print(drctn)
-        print(res_dict)
+        # print(drctn)
+        # print(res_dict)
         if drctn == DOWN:
-            slice = myimg[(2*tsize):(3*tsize), (arr_idx*step):(arr_idx*step + tsize), :]
-            return myimg[(2*tsize):(3*tsize), (arr_idx*step):(arr_idx*step + tsize), :], 2*tsize, arr_idx*step, drctn
+            # slice = myimg[(2*tsize):(3*tsize), (arr_idx*step):(arr_idx*step + tsize), :]
+            return myimg[(2*tsize):(3*tsize), (arr_idx*step):(arr_idx*step + tsize), :], mymask[(2*tsize):(3*tsize), (arr_idx*step):(arr_idx*step + tsize), :], 2*tsize, arr_idx*step, drctn
         elif drctn == LEFT:
-            return myimg[tsize:(2*tsize), 0:tsize, :], tsize, 0, drctn
+            return myimg[tsize:(2*tsize), 0:tsize, :], mymask[tsize:(2*tsize), 0:tsize, :], tsize, 0, drctn
         elif drctn == RIGHT:
-            return myimg[tsize:(2 * tsize), (2*tsize):(3*tsize), :], tsize, 2*tsize, drctn
+            return myimg[tsize:(2 * tsize), (2*tsize):(3*tsize), :], mymask[tsize:(2 * tsize), (2*tsize):(3*tsize), :], tsize, 2*tsize, drctn
     elif last == UP:
         res_arr = []
         for i in range(nsteps-1):
@@ -333,14 +333,14 @@ def cut_image_from_working_tile(myimg, last):
         slice = myimg[tsize:(2 * tsize), (2*tsize):(3*tsize), :]
         res_dict[RIGHT] = analyze_slice(slice)
         drctn = find_minimal_dict(res_dict)
-        print(drctn)
-        print(res_dict)
+        # print(drctn)
+        # print(res_dict)
         if drctn == UP:
-            return myimg[0:tsize, (arr_idx*step):(arr_idx*step + tsize), :], 0, arr_idx*step, drctn
+            return myimg[0:tsize, (arr_idx*step):(arr_idx*step + tsize), :], mymask[0:tsize, (arr_idx*step):(arr_idx*step + tsize), :], 0, arr_idx*step, drctn
         elif drctn == LEFT:
-            return myimg[tsize:(2*tsize), 0:tsize, :], tsize, 0, drctn
+            return myimg[tsize:(2*tsize), 0:tsize, :], mymask[tsize:(2*tsize), 0:tsize, :], tsize, 0, drctn
         elif drctn == RIGHT:
-            return myimg[tsize:(2 * tsize), (2*tsize):(3*tsize), :], tsize, 2*tsize, drctn
+            return myimg[tsize:(2 * tsize), (2*tsize):(3*tsize), :], mymask[tsize:(2 * tsize), (2*tsize):(3*tsize), :], tsize, 2*tsize, drctn
     elif last == LEFT:
         res_arr = []
         for i in range(nsteps-1):
@@ -353,14 +353,14 @@ def cut_image_from_working_tile(myimg, last):
         slice = myimg[(2*tsize):(3*tsize), tsize:(2 * tsize), :]
         res_dict[DOWN] = analyze_slice(slice)
         drctn = find_minimal_dict(res_dict)
-        print(drctn)
-        print(res_dict)
+        # print(drctn)
+        # print(res_dict)
         if drctn == LEFT:
-            return myimg[(arr_idx*step):(arr_idx*step + tsize), 0:tsize, :], arr_idx*step, 0, drctn
+            return myimg[(arr_idx*step):(arr_idx*step + tsize), 0:tsize, :], mymask[(arr_idx*step):(arr_idx*step + tsize), 0:tsize, :], arr_idx*step, 0, drctn
         elif drctn == UP:
-            return myimg[0:tsize, tsize:(2*tsize), :], 0, tsize, drctn
+            return myimg[0:tsize, tsize:(2*tsize), :], mymask[0:tsize, tsize:(2*tsize), :], 0, tsize, drctn
         elif drctn == DOWN:
-            return myimg[(2*tsize):(3*tsize), tsize:(2 * tsize), :], 2*tsize, tsize, drctn
+            return myimg[(2*tsize):(3*tsize), tsize:(2 * tsize), :], mymask[(2*tsize):(3*tsize), tsize:(2 * tsize), :], 2*tsize, tsize, drctn
     elif last == RIGHT:
         res_arr = []
         for i in range(nsteps-1):
@@ -373,14 +373,14 @@ def cut_image_from_working_tile(myimg, last):
         slice = myimg[(2*tsize):(3*tsize), tsize:(2 * tsize), :]
         res_dict[DOWN] = analyze_slice(slice)
         drctn = find_minimal_dict(res_dict)
-        print(drctn)
-        print(res_dict)
+        # print(drctn)
+        # print(res_dict)
         if drctn == RIGHT:
-            return myimg[(arr_idx*step):(arr_idx*step + tsize), (2*tsize):(3*tsize), :], arr_idx*step, 2*tsize, drctn
+            return myimg[(arr_idx*step):(arr_idx*step + tsize), (2*tsize):(3*tsize), :], mymask[(arr_idx*step):(arr_idx*step + tsize), (2*tsize):(3*tsize), :], arr_idx*step, 2*tsize, drctn
         elif drctn == UP:
-            return myimg[0:tsize, tsize:(2*tsize), :], 0, tsize, drctn
+            return myimg[0:tsize, tsize:(2*tsize), :], mymask[0:tsize, tsize:(2*tsize), :], 0, tsize, drctn
         elif drctn == DOWN:
-            return myimg[(2*tsize):(3*tsize), tsize:(2 * tsize), :], 2*tsize, tsize, drctn
+            return myimg[(2*tsize):(3*tsize), tsize:(2 * tsize), :], mymask[(2*tsize):(3*tsize), tsize:(2 * tsize), :], 2*tsize, tsize, drctn
 
 
 def check_if_repeats(coordlist, curr_h, curr_w, cstep):
@@ -393,7 +393,6 @@ def check_if_repeats(coordlist, curr_h, curr_w, cstep):
         if coord_nh == nh and coord_nw == nw:
             return False
     return True
-
 
 
 def cut2(img, mask, x, y, tile_width):
@@ -421,7 +420,7 @@ def cut2(img, mask, x, y, tile_width):
     #       zapobieganie nachodzeniu)
     # analiza współczynników - jak niewielka zmiana, to ustaw cutting na false
     height, width, _ = img.shape
-
+    # print(img.shape)
     cstep = tile_width
 
     hmax = int(height/100)
@@ -431,75 +430,152 @@ def cut2(img, mask, x, y, tile_width):
     last = DOWN
     h = x
     w = y
+    # print(w)
+    # print(cstep)
+    # print(w < cstep)
+    if h < cstep:
+        h = cstep
+    if w < cstep:
+        # print("hi lower w")
+        w = cstep
+    if height - 2 * cstep - 1 < h:
+        h = height - 2 * cstep - 1
+    if width - 2 * cstep - 1 < w:
+        # print("hi higher w")
+        w = width - 2 * cstep - 1
+
     indx=1
 
     coordlist = []
     save_img = img[h:(h+cstep), w:(w+cstep), :]
-    mask[h:(h + cstep), w:(w + cstep), :] = save_img
+    save_mask = mask[h:(h+cstep), w:(w+cstep), :]
 
-    cv2.imwrite(f"cut_test/{indx}.png", save_img)
-    print(f"cut_test/{indx}.png")
-
-    if h < cstep:
-        h = cstep
-    if w < cstep:
-        w = cstep
-    if height - 2 * cstep < h:
-        h = height - 2 * cstep
-    if width - 2 * cstep < w:
-        w = width - 2 * cstep
-
-    print(f"h: {h}  w: {w}")
-
+    # print(f"before w: {w}")
+    res_img = [save_img]
+    res_mask = [save_mask]
     while cutting:
         prev_h = h
         prev_w = w
         # print(h, h+cstep, w, w+cstep)
         coordlist.append((prev_h, prev_w))
-
+        # print(w)
+        # print(cstep)
+        # print(w-cstep)
+        # print(w + 2*cstep)
         mimg = img[(h-cstep):(h + 2*cstep), (w-cstep):(w + 2*cstep), :]
-        print(mimg.shape)
-        #plt.imshow(mimg)
-        #plt.show()
-        save_img, h0, w0, direction = cut_image_from_working_tile(mimg, last)
-        print("cut image")
-        #plt.imshow(save_img)
-        #plt.show()
+        __w, __h, _ = mimg.shape
+        # print(mimg.shape)
+        assert __w == __h # mimg
+        mmask = mask[(h-cstep):(h + 2*cstep), (w-cstep):(w + 2*cstep), :]
+        # print(mimg.shape)
+        save_img, save_mask, h0, w0, direction = cut_image_from_working_tile(mimg, mmask, last)
+        __w, __h, _ = save_img.shape
+        assert __w == __h  # save_img
+        res_img.append(save_img)
+        res_mask.append(save_mask)
         w += w0 - cstep  # UWAGA: nasz układ wsp zaczyna się h - cstep; obraz zaczyna się od 0 - nanoszę poprawkę
         h += h0 - cstep
         if w < cstep:
             w = cstep
         if h < cstep:
             h = cstep
-        if height - 2 * cstep < h:
-            h = height - 2 * cstep
-        if width - 2 * cstep < w:
-            w = width - 2 * cstep
-        mask[h:(h + cstep), w:(w + cstep), :] = save_img
-        cv2.imwrite(f"cut_test/{indx}.png", save_img)
-        #plt.imshow(mimg)
-        #plt.show()
-        print(f"cut_test/{indx}.png")
+        if height - 2 * cstep - 1 < h:
+            # print("hi")
+            h = height - 2 * cstep - 1
+        if width - 2 * cstep - 1 < w:
+            # print("hi")
+            w = width - 2 * cstep - 1
         indx += 1
 
         last = direction
-        print(h, w, prev_h, prev_w)
+        # print(h, w, prev_h, prev_w, height, width)
         cutting = check_if_repeats(coordlist, h, w, cstep)
-        print(f"h: {h}  w: {w}, height: {height}, width: {width}")
         #plt.imshow(mimg)
         #plt.show()
-    plt.subplot(121)
-    plt.imshow(img)
-    plt.subplot(122)
-    plt.imshow(mask)
-    plt.show()
-    plt.imshow(mimg)
-    plt.show()
+    return res_img, res_mask
+
+
+def load_data(img_path, mask_path):
+    img_train = []
+    mask_train = []
+    tilesize = 200
+    first = True
+    for name in os.listdir(img_path):
+        part1, part2 = name.split(".")
+        img = io.imread(img_path + name)
+        hh, ww, _ = img.shape
+        if hh < tilesize * 3 or ww < tilesize * 3:
+            print(f"pominięto {name} ")
+            continue
+        # rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        mask = io.imread(mask_path + part1 + "_mask." + part2)
+        x, y = find_begin(img, step=100)
+        tile_img, tile_mask = cut2(img, mask, x, y, tilesize)
+        tile_res = [np.max(msk) for msk in tile_mask]
+        tile_img_np = np.array(tile_img)
+        tile_res_np = np.array(tile_res)
+
+        if first:
+            first = False
+            img_train = tile_img_np
+            mask_train = tile_res_np
+        else:
+            img_train = np.concatenate((img_train, tile_img_np))
+            mask_train = np.concatenate((mask_train, tile_res_np))
+    return img_train, mask_train
 
 
 if __name__ == "__main__":
-    img = cv2.imread(f'krzywy.tiff')
-    mask = np.zeros(img.shape, dtype=np.int)
-    rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    x, y = find_begin(rgb_img, step=100)
-    cut2(img, mask, x, y, 200)
+    import os
+    import time
+
+    import h5py
+
+    BASE = "G:/panda/d/dset/"
+    IMG = "train_img/"
+    MASK = "train_mask/"
+    t1 = time.time()
+    _counter = 1
+    vec = os.listdir(BASE + IMG)
+    tilesize = 200
+    sizearr = []
+    img_train = []
+    mask_train = []
+    max_mask = []
+    with h5py.File(BASE + 'mydataset.hdf5', 'w') as hf:
+        for name in os.listdir(BASE + IMG):
+            # print(_counter)
+            _counter += 1
+            part1, part2 = name.split(".")
+            #img = cv2.imread(BASE + IMG + name)
+            #hh, ww, _ = img.shape
+            #if hh < tilesize*3 or ww < tilesize*3:
+            ##    print(f"file {name} omitted")
+             #   continue
+            #rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            #mask = cv2.imread(BASE + MASK + part1 + "_mask." + part2)
+            #x, y = find_begin(rgb_img, step=100)
+            #tile_img, tile_mask = cut2(img, mask, x, y, tilesize)
+            #tile_img_np = np.array(tile_img)
+            #tile_mask_np = np.array(tile_mask)
+            grp = hf.create_group(name)
+            #print(tile_img_np.shape)
+            #grp.create_dataset("img", data=tile_img_np, shape=tile_img_np.shape, dtype='i', chunks=True)
+            #grp.create_dataset("mask", data=tile_mask_np, shape=tile_mask_np.shape, dtype='i', chunks=True)
+            #max_mask.append(np.max(tile_mask_np))
+            #sizearr.append(len(tile_img))
+    t2 = time.time()
+    # print(max(max_mask))
+    # for x in range(0, 5):
+      #  print(len([i for i in max_mask if i == x]))
+    plt.hist(max_mask, bins=5)
+    plt.show()
+    print(f"Time: {t2-t1}")
+    #plt.plot(sizearr)
+    #plt.show()
+    # print(f"sum: {sum(sizearr)}")
+    img_train_np = np.array(img_train)
+    mask_train_np = np.array(mask_train)
+    # print(img_train_np.shape)
+    # print(mask_train_np.shape)
+
